@@ -35,16 +35,26 @@ class VectorStore:
         )
 
     def _create_client(self, chromadb_module: Any) -> Any:
-        if settings.CHROMA_URL:
-            parsed = urlparse(settings.CHROMA_URL)
+        chroma_target = settings.CHROMA_URL or settings.CHROMA_HOST
+
+        if chroma_target:
+            parsed = urlparse(chroma_target)
+            if parsed.scheme in {"http", "https"}:
+                if not parsed.hostname:
+                    raise ValueError("CHROMA_URL must include a hostname")
+
+                scheme = parsed.scheme.lower()
+                ssl = settings.CHROMA_SSL or scheme == "https"
+                port = parsed.port or (443 if ssl else 8000)
+
+                return chromadb_module.HttpClient(host=parsed.hostname, port=port, ssl=ssl)
+
             if not parsed.hostname:
-                raise ValueError("CHROMA_URL must include a hostname")
-
-            scheme = parsed.scheme.lower()
-            ssl = settings.CHROMA_SSL or scheme == "https"
-            port = parsed.port or (443 if ssl else 8000)
-
-            return chromadb_module.HttpClient(host=parsed.hostname, port=port, ssl=ssl)
+                return chromadb_module.HttpClient(
+                    host=chroma_target,
+                    port=settings.CHROMA_PORT,
+                    ssl=settings.CHROMA_SSL,
+                )
 
         return chromadb_module.HttpClient(
             host=settings.CHROMA_HOST,
