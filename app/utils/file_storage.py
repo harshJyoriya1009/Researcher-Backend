@@ -11,15 +11,28 @@ from fastapi import UploadFile
 from app.core.config import settings
 
 UPLOAD_ROOT = Path(settings.UPLOAD_DIR).resolve()
+# Keep legacy paths readable so documents uploaded before an UPLOAD_DIR
+# change can still be deleted or re-processed safely after deployment.
+LEGACY_UPLOAD_ROOTS = {
+    Path("/app/data/uploads").resolve(),
+    Path("/app/data").resolve(),
+}
 
 
 def _safe_storage_path(storage_path: str) -> Path:
     path = Path(storage_path).resolve()
-    try:
-        path.relative_to(UPLOAD_ROOT)
-    except ValueError as exc:
-        raise ValueError("Invalid upload path.") from exc
+    allowed_roots = {UPLOAD_ROOT, *LEGACY_UPLOAD_ROOTS}
+    if not any(_is_within_root(path, root) for root in allowed_roots):
+        raise ValueError("Invalid upload path.")
     return path
+
+
+def _is_within_root(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
 
 
 def _ensure_upload_root() -> None:
