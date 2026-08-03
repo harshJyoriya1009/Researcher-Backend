@@ -183,26 +183,50 @@ async def process_document_task(document_id: UUID) -> None:
             if not chunks:
                 raise DocumentProcessingError("Document produced no indexable text.")
 
-            embedder = get_embedding_provider()
-            embeddings = await embedder.embed([c.text for c in chunks])
-
-            get_vector_store().add_chunks(
-                document_id=document.id,
-                document_name=document.name,
-                user_id=document.user_id,
-                chunks=[{"text": c.text, "page_number": c.page_number, "chunk_index": c.chunk_index} for c in chunks],
-                embeddings=embeddings,
-            )
+            try:
+                embedder = get_embedding_provider()
+                embeddings = await embedder.embed([c.text for c in chunks])
+                get_vector_store().add_chunks(
+                    document_id=document.id,
+                    document_name=document.name,
+                    user_id=document.user_id,
+                    chunks=[
+                        {"text": c.text, "page_number": c.page_number, "chunk_index": c.chunk_index}
+                        for c in chunks
+                    ],
+                    embeddings=embeddings,
+                )
+            except Exception as exc:  # noqa: BLE001 - indexing should not fail the upload itself
+                logger.exception(f"Document {document_id} indexing failed")
+                await repo.update(
+                    document,
+                    status=DocumentStatus.READY,
+                    page_count=len({c.page_number for c in chunks}),
+                    chunk_count=len(chunks),
+                    error_message=(
+                        "The document was uploaded, but indexing is unavailable on this deployment."
+                    ),
+                )
+                await session.commit()
+                return
 
             await repo.update(
                 document,
                 status=DocumentStatus.READY,
                 page_count=len({c.page_number for c in chunks}),
                 chunk_count=len(chunks),
+                error_message=None,
             )
             logger.info(f"Document {document_id} processed: {len(chunks)} chunks indexed")
 
-        except Exception as exc:  # noqa: BLE001 — always persist a failure state
+        except DocumentProcessingError:
+            logger.exception(f"Document {document_id} processing failed")
+            await repo.update(
+                document,
+                status=DocumentStatus.ERROR,
+                error_message="Document processing failed.",
+            )
+        except Exception:  # noqa: BLE001 - keep background task from crashing the worker
             logger.exception(f"Document {document_id} processing failed")
             await repo.update(
                 document,
