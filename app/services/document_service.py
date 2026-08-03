@@ -140,7 +140,12 @@ class DocumentService:
             storage_path="",
         )
 
-        path = await save_upload(document.id, file)
+        try:
+            path = await save_upload(document.id, file)
+        except OSError as exc:
+            logger.exception("Failed to store uploaded document")
+            raise ValidationFailedError("The server could not store this upload.") from exc
+
         document = await self.documents.update(
             document, status=DocumentStatus.PROCESSING, storage_path=str(path)
         )
