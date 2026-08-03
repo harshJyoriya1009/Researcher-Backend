@@ -27,7 +27,8 @@ langchain-core>=0.3,<0.4
 litellm>=1.50
 
 # --- Vector DB ---
-chromadb>=0.5,<0.6
+# Keep the Python client on the same major/minor line as the Chroma server.
+chromadb>=1.5.9,<1.6
 
 # --- Document parsing ---
 pypdf>=4.3

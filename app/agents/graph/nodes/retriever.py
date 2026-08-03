@@ -16,10 +16,9 @@ async def retriever_node(state: ResearchState) -> dict:
     if not state.get("needs_retrieval"):
         return {"retrieved_chunks": []}
 
-    embeddings = get_embedding_provider()
-    store = get_vector_store()
-
     try:
+        embeddings = get_embedding_provider()
+        store = get_vector_store()
         query_embedding = await embeddings.embed_one(state["query"])
         results = store.query(
             query_embedding=query_embedding,

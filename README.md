@@ -167,6 +167,7 @@ and a separate private Chroma service backed by a persistent disk.
 ### Chroma setup
 
 - Chroma persists data under `/data`
+- Keep the Chroma server and Python client on the same `1.5.x` release line
 - The API reads `CHROMA_HOST` and `CHROMA_PORT` from the Chroma service's
   private network address
 - If you prefer a public Chroma endpoint, set `CHROMA_URL` instead
