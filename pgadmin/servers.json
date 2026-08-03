@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Research Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "Username": "research_user",
+      "MaintenanceDB": "research_assistant",
+      "SSLMode": "prefer",
+      "ConnectNow": true
+    }
+  }
+}
